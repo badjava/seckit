@@ -4,16 +4,21 @@
  * Tests for Security Kit module.
  */
 
+namespace Drupal\seckit\Tests;
+
+use Drupal\simpletest\WebTestBase;
+use Drupal\seckit\EventSubscriber\SecKitEventSubscriber;
+
 /**
  * Functional tests for Security Kit.
  */
-class SecKitTestCase extends DrupalWebTestCase {
+class SecKitTestCaseTest extends WebTestBase {
   /**
    * Admin user for tests
    * @var object
    */
   private $admin;
-
+  public static $modules = array('seckit');
   /**
    * Implements getInfo().
    * @see DrupalWebTestCase::getInfo()
@@ -31,7 +36,7 @@ class SecKitTestCase extends DrupalWebTestCase {
    * @see DrupalWebTestCase::setUp()
    */
   public function setUp() {
-    parent::setUp('seckit');
+    parent::setUp();
     $this->admin = $this->drupalCreateUser(array('administer seckit'));
     $this->drupalLogin($this->admin);
   }
@@ -41,7 +46,7 @@ class SecKitTestCase extends DrupalWebTestCase {
    */
   public function testDisabledCSP() {
     $form['seckit_xss[csp][checkbox]'] = FALSE;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertFalse($this->drupalGetHeader('Content-Security-Policy'),
       t('Content Security Policy is disabled (Official).'));
     $this->assertFalse($this->drupalGetHeader('X-Content-Security-Policy'),
@@ -67,20 +72,20 @@ class SecKitTestCase extends DrupalWebTestCase {
       'seckit_xss[csp][connect-src]' => '*',
       'seckit_xss[csp][report-uri]'  => 'admin/config/system/seckit/csp-report',
     );
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
-    $expected = 'default-src *; script-src *; object-src *; style-src *; img-src *; media-src *; frame-src *; font-src *; connect-src *; report-uri admin/config/system/seckit/csp-report';
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
+    $expected = 'default-src *; script-src *; object-src *; style-src *; img-src *; media-src *; frame-src *; font-src *; connect-src *; report-uri /admin/config/system/seckit/csp-report';
     $this->assertEqual($expected, $this->drupalGetHeader('Content-Security-Policy'),
-      t('Content-Security-Policy has all the directves (Official).'));
+      t('Content-Security-Policy has all the directives (Official).'));
     $this->assertEqual($expected, $this->drupalGetHeader('X-Content-Security-Policy'),
-      t('X-Content-Security-Policy has all the directves (Mozilla and IE10).'));
+      t('X-Content-Security-Policy has all the directives (Mozilla and IE10).'));
     $this->assertEqual($expected, $this->drupalGetHeader('X-WebKit-CSP'),
-      t('X-WebKit-CSP has all the directves (Chrome and Safari).'));
+      t('X-WebKit-CSP has all the directives (Chrome and Safari).'));
   }
 
   /**
    * Tests Content Security Policy with policy-uri directive.
    * In this case, only policy-uri directive should be present.
-   */
+   *//*
   public function testCSPPolicyUriDirectiveOnly() {
     $form = array(
       'seckit_xss[csp][checkbox]'    => TRUE,
@@ -96,7 +101,7 @@ class SecKitTestCase extends DrupalWebTestCase {
       'seckit_xss[csp][report-uri]'  => 'admin/config/system/seckit/csp-report',
       'seckit_xss[csp][policy-uri]'  => 'http://mysite.com/csp.xml',
     );
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $expected = 'policy-uri http://mysite.com/csp.xml';
     $this->assertEqual($expected, $this->drupalGetHeader('Content-Security-Policy'),
       t('Content-Security-Policy has only policy-uri (Official).'));
@@ -104,7 +109,7 @@ class SecKitTestCase extends DrupalWebTestCase {
       t('X-Content-Security-Policy has only policy-uri (Mozilla and IE10).'));
     $this->assertEqual($expected, $this->drupalGetHeader('X-WebKit-CSP'),
       t('X-WebKit-CSP has only policy-uri(Chrome and Safari).'));
-  }
+  }*/
 
   /**
    * Tests Content Security Policy with all directives empty.
@@ -113,7 +118,7 @@ class SecKitTestCase extends DrupalWebTestCase {
   public function testCSPAllDirectivesEmpty() {
     $form = array(
       'seckit_xss[csp][checkbox]'    => TRUE,
-      'seckit_xss[csp][default-src]' => '',
+      'seckit_xss[csp][default-src]' => 'self',
       'seckit_xss[csp][script-src]'  => '',
       'seckit_xss[csp][object-src]'  => '',
       'seckit_xss[csp][img-src]'     => '',
@@ -122,11 +127,11 @@ class SecKitTestCase extends DrupalWebTestCase {
       'seckit_xss[csp][frame-src]'   => '',
       'seckit_xss[csp][font-src]'    => '',
       'seckit_xss[csp][connect-src]' => '',
-      'seckit_xss[csp][report-uri]'  => '',
+      'seckit_xss[csp][report-uri]'  => 'admin/config/system/seckit/csp-report',
       'seckit_xss[csp][policy-uri]'  => '',
     );
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
-    $expected = "default-src 'self'; report-uri admin/config/system/seckit/csp-report";
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
+    $expected = "default-src self; report-uri /admin/config/system/seckit/csp-report";
     $this->assertEqual($expected, $this->drupalGetHeader('Content-Security-Policy'),
       t('Content-Security-Policy has default directive (Official).'));
     $this->assertEqual($expected, $this->drupalGetHeader('X-Content-Security-Policy'),
@@ -137,11 +142,11 @@ class SecKitTestCase extends DrupalWebTestCase {
 
   /**
    * Tests Content Security Policy in report-only mode.
-   */
+   *//*
   public function testReportOnlyCSP() {
     $form['seckit_xss[csp][checkbox]'] = TRUE;
     $form['seckit_xss[csp][report-only]'] = TRUE;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertTrue($this->drupalGetHeader('Content-Security-Policy-Report-Only'),
       t('Content Security Policy is in report-only mode (Official).'));
     $this->assertTrue($this->drupalGetHeader('X-Content-Security-Policy-Report-Only'),
@@ -149,13 +154,13 @@ class SecKitTestCase extends DrupalWebTestCase {
     $this->assertTrue($this->drupalGetHeader('X-WebKit-CSP-Report-Only'),
       t('Content Security Policy is in report-only mode (Chrome and Safari).'));
   }
-
+*/
   /**
    * Tests disabled X-XSS-Protection HTTP response header.
    */
   public function testXXSSProtectionIsDisabled() {
     $form['seckit_xss[x_xss][select]'] = SECKIT_X_XSS_DISABLE;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertFalse($this->drupalGetHeader('X-XSS-Protection'),
       t('X-XSS-Protection is disabled.'));
   }
@@ -165,7 +170,7 @@ class SecKitTestCase extends DrupalWebTestCase {
    */
   public function testXXSSProtectionIs0() {
     $form['seckit_xss[x_xss][select]'] = SECKIT_X_XSS_0;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertEqual(0, $this->drupalGetHeader('X-XSS-Protection'),
       t('X-XSS-Protection is set to 0.'));
   }
@@ -175,7 +180,7 @@ class SecKitTestCase extends DrupalWebTestCase {
    */
   public function testXXSSProtectionIs1() {
     $form['seckit_xss[x_xss][select]'] = SECKIT_X_XSS_1;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertEqual('1; mode=block', $this->drupalGetHeader('X-XSS-Protection'),
       t('X-XSS-Protection is set to 1; mode=block.'));
   }
@@ -185,7 +190,7 @@ class SecKitTestCase extends DrupalWebTestCase {
    */
   public function testDisabledXContentTypeOptions() {
     $form['seckit_xss[x_content_type][checkbox]'] = FALSE;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertFalse($this->drupalGetHeader('X-Content-Type-Options'),
       t('X-Content-Type-Options is disabled.'));
   }
@@ -195,7 +200,7 @@ class SecKitTestCase extends DrupalWebTestCase {
    */
   public function testEnabledXContentTypeOptions() {
     $form['seckit_xss[x_content_type][checkbox]'] = TRUE;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertEqual('nosniff', $this->drupalGetHeader('X-Content-Type-Options'),
       t('X-Content-Type-Options is enabled and set to nosniff.'));
   }
@@ -206,8 +211,8 @@ class SecKitTestCase extends DrupalWebTestCase {
   public function testOriginAllowsSite() {
     global $base_url;
     $form['seckit_csrf[origin]'] = TRUE;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'),
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'),
       array(), array('Origin: ' . $base_url));
     $this->assertResponse(200,
       t('Request is allowed.'));
@@ -221,8 +226,8 @@ class SecKitTestCase extends DrupalWebTestCase {
       'seckit_csrf[origin]' => TRUE,
       'seckit_csrf[origin_whitelist]' => 'http://www.example.com',
     );
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'),
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'),
       array(), array('Origin: http://www.example.com'));
     $this->assertResponse(200,
       t('Whitelisted request is allowed.'));
@@ -233,12 +238,12 @@ class SecKitTestCase extends DrupalWebTestCase {
    */
   public function testOriginDeny() {
     $form['seckit_csrf[origin]'] = TRUE;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'),
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'),
       array(), array('Origin: http://www.example.com'));
     $this->assertEqual(array(), $_POST,
       t('POST is empty.'));
-    $this->assertResponse(403,
+    $this->assertResponse('403',
       t('Request is denied.'));
   }
 
@@ -247,7 +252,7 @@ class SecKitTestCase extends DrupalWebTestCase {
    */
   public function testXFrameOptionsIsDisabled() {
     $form['seckit_clickjacking[x_frame]'] = SECKIT_X_FRAME_DISABLE;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertFalse($this->drupalGetHeader('X-Frame-Options'),
       t('X-Frame-Options is disabled.'));
   }
@@ -257,7 +262,7 @@ class SecKitTestCase extends DrupalWebTestCase {
    */
   public function testXFrameOptionsIsSameOrigin() {
     $form['seckit_clickjacking[x_frame]'] = SECKIT_X_FRAME_SAMEORIGIN;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertEqual('SameOrigin', $this->drupalGetHeader('X-Frame-Options'),
       t('X-Frame-Options is set to SameOrigin.'));
   }
@@ -267,7 +272,7 @@ class SecKitTestCase extends DrupalWebTestCase {
    */
   public function testXFrameOptionsIsDeny() {
     $form['seckit_clickjacking[x_frame]'] = SECKIT_X_FRAME_DENY;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertEqual('Deny', $this->drupalGetHeader('X-Frame-Options'),
       t('X-Frame-Options is set to Deny.'));
   }
@@ -278,7 +283,7 @@ class SecKitTestCase extends DrupalWebTestCase {
   public function testXFrameOptionsIsAllowFrom() {
     $form['seckit_clickjacking[x_frame]'] = SECKIT_X_FRAME_ALLOW_FROM;
     $form['seckit_clickjacking[x_frame_allow_from]'] = 'http://www.google.com';
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertEqual('Allow-From: http://www.google.com', $this->drupalGetHeader('X-Frame-Options'),
       t('X-Frame-Options is set to Allow-From.'));
   }
@@ -289,8 +294,10 @@ class SecKitTestCase extends DrupalWebTestCase {
   public function testJSCSSNoscript() {
     $form['seckit_clickjacking[js_css_noscript]'] = TRUE;
     $form['seckit_clickjacking[noscript_message]'] = 'Sorry, your JavaScript is disabled.';
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
-    $code = _seckit_get_js_css_noscript_code();
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
+    $config = \Drupal::config('seckit.settings');
+    $no_script_message = $config->get('seckit_clickjacking.noscript_message');
+    $code = SecKitEventSubscriber::_seckit_get_js_css_noscript_code($no_script_message);
     $this->assertRaw($code,
       t('JavaScript + CSS + Noscript protection is loaded.'));
   }
@@ -300,7 +307,7 @@ class SecKitTestCase extends DrupalWebTestCase {
    */
   public function testDisabledHSTS() {
     $form['seckit_ssl[hsts]'] = FALSE;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertFalse($this->drupalGetHeader('Strict-Transport-Security'),
       t('HTTP Strict Transport Security is disabled.'));
   }
@@ -314,7 +321,7 @@ class SecKitTestCase extends DrupalWebTestCase {
       'seckit_ssl[hsts_max_age]' => 1000,
       'seckit_ssl[hsts_subdomains]' => 1,
     );
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $expected = 'max-age=1000; includeSubDomains';
     $this->assertEqual($expected, $this->drupalGetHeader('Strict-Transport-Security'),
       t('HTTP Strict Transport Security has all the directives.'));
@@ -325,7 +332,7 @@ class SecKitTestCase extends DrupalWebTestCase {
    */
   public function testDisabledFromOrigin() {
     $form['seckit_various[from_origin]'] = FALSE;
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertFalse($this->drupalGetHeader('From-Origin'),
       t('From-Origin is disabled.'));
   }
@@ -338,7 +345,7 @@ class SecKitTestCase extends DrupalWebTestCase {
       'seckit_various[from_origin]' => TRUE,
       'seckit_various[from_origin_destination]' => 'same',
     );
-    $this->drupalPost('admin/config/system/seckit', $form, t('Save configuration'));
+    $this->drupalPostForm('admin/config/system/seckit', $form, t('Save configuration'));
     $this->assertEqual('same', $this->drupalGetHeader('From-Origin'),
       t('From-Origin is enabled and set to same.'));
   }
